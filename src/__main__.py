@@ -1,31 +1,11 @@
 import sys
-import random
 from dotenv import load_dotenv
-from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6 import QtWidgets
 
 from botapi.bot import BotAPIProcess
+from widgets.GuiApplication import Application
 
 telegramProcess: BotAPIProcess = None
-
-class MyWidget(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel("Hello World",
-                                     alignment=QtCore.Qt.AlignCenter)
-
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
-
-        self.button.clicked.connect(self.magic)
-
-    @QtCore.Slot()
-    def magic(self):
-        self.text.setText(random.choice(self.hello))
 
 if __name__ == "__main__":
     #Load env
@@ -36,11 +16,7 @@ if __name__ == "__main__":
     telegramProcess.startBot()
 
     #Start App
-    app = QtWidgets.QApplication([])
-
-    widget = MyWidget()
-    widget.resize(800, 600)
-    widget.show()
-    returnCode = app.exec()
-    sys.exit(returnCode)
+    app = Application()
+    returnCode = app.runApp()
     telegramProcess.stopBot()
+    sys.exit(returnCode)
