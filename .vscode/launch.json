@@ -12,7 +12,7 @@
             "name": "Debug Project",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}\\src\\main"
+            "program": "${workspaceFolder}\\src"
         },
     ]
 }
