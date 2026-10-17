@@ -50,7 +50,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QPlainTextEdit" name="password">
+    <widget class="QLineEdit" name="password">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -69,29 +69,17 @@
        <height>40</height>
       </size>
      </property>
-     <property name="baseSize">
-      <size>
-       <width>400</width>
-       <height>40</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <family>Consolas</family>
        <pointsize>20</pointsize>
       </font>
      </property>
-     <property name="verticalScrollBarPolicy">
-      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+     <property name="echoMode">
+      <enum>QLineEdit::EchoMode::Password</enum>
      </property>
-     <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-     </property>
-     <property name="sizeAdjustPolicy">
-      <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustIgnored</enum>
-     </property>
-     <property name="lineWrapMode">
-      <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
      </property>
      <property name="placeholderText">
       <string>Password</string>

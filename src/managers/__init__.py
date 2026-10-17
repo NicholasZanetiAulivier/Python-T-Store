@@ -1,4 +1,4 @@
-__all__ = ["LoginManager"]
+__all__ = ["LoginManager", "FilesManager"]
 
 from . import LoginManager
 from . import FilesManager
