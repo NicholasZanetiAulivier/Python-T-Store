@@ -1,31 +1,121 @@
-from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QPlainTextEdit, QTableWidget
+from io import FileIO
+from os.path import getsize
+from pathlib import Path
+
+from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog
+from PySide6.QtCore import Slot
 from managers.DatabaseManager import DatabaseManager
+from enum import Enum
+
+class UploadState(Enum):
+    NO_FILE = 1
+    FILE_UPLOADED = 2
+    DUPLICATE_FILE_NAME = 3
+    INVALID_FILE_NAME = 4 
+    UPLOAD_SUCCESS = 5
+    UPLOAD_FAIL = 6
 
 class FilesManager:
-    def __init__(self, files: QWidget, sendSignal):
-        self.db: DatabaseManager = DatabaseManager()
+    db: DatabaseManager = DatabaseManager()
 
+
+    def __init__(self, files: QWidget, sendSignal):
         self.sendSignal = sendSignal
+
+        self.currentSize: int = 0
+        self.currentName: str = ""
+        self.currentFile: FileIO =None
         
         self.page: QWidget = files
+
+        self.tabs: QTabWidget = self.page.tabs
         
         self.uploadTab: QWidget = self.page.uploadTab
 
         self.uploadButton: QPushButton = self.page.uploadButton
         self.status: QLabel = self.page.status
-        self.fileName: QPlainTextEdit = self.page.fileName
-        self.extention: QLabel = self.page.extention
+        self.fileName: QLineEdit = self.page.fileName
         self.fileSize: QLabel = self.page.fileSize
         self.confirmButton: QPushButton = self.page.confirmButton
         
         self.downloadTab: QWidget = self.page.downloadTab
         
-        self.search: QPlainTextEdit = self.page.search
+        self.search: QLineEdit = self.page.search
         self.searchButton: QPushButton = self.page.searchButton
         self.table: QTableWidget = self.page.table
+
+        self.tabs.currentChanged.connect(self.changeTab)
+
+        self.uploadButton.clicked.connect(self.openFileDialog)
+
+        self.setUploadState(UploadState.NO_FILE)
+
+    def __del__(self):
+        if(self.currentFile):
+            self.currentFile.close()
 
     def show(self):
             self.page.show()
     
     def close(self):
         self.page.setVisible(False)
+
+    def setUploadState(self, state: UploadState):
+        match state:
+            case UploadState.NO_FILE:
+                self.fileName.setText("")
+                self.fileName.setEnabled(False)
+                self.status.setText("No file")
+                self.fileSize.setText("-")
+                self.confirmButton.setEnabled(False)
+            case UploadState.DUPLICATE_FILE_NAME:
+                self.fileName.setEnabled(True)
+                self.status.setText("Another file has already been uploaded by that name")
+                self.fileSize.setText(f"{self.currentSize} bytes")
+                self.confirmButton.setEnabled(True)
+            case UploadState.FILE_UPLOADED:
+                self.fileName.setText(self.currentName)
+                self.fileName.setEnabled(True)
+                self.status.setText("File has been picked")
+                self.fileSize.setText(f"{self.currentSize} bytes")
+                self.confirmButton.setEnabled(False)
+            case UploadState.INVALID_FILE_NAME:
+                self.fileName.setEnabled(True)
+                self.status.setText("File name is invalid")
+                self.fileSize.setText(f"{self.currentSize} bytes")
+                self.confirmButton.setEnabled(True)
+            case UploadState.UPLOAD_SUCCESS:
+                self.fileName.setEnabled(False)
+                self.status.setText("File has successfully been uploaded")
+                self.fileSize.setText("-")
+                self.confirmButton.setEnabled(False)
+            case UploadState.UPLOAD_FAIL:
+                self.fileName.setEnabled(False)
+                self.status.setText("File failed to upload. Try again")
+                self.fileSize.setText("-")
+                self.confirmButton.setEnabled(False)
+
+    def openFileDialog(self):
+        dialog = QFileDialog(self.page)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        dialog.setViewMode(QFileDialog.ViewMode.List)
+        fileNames: list[str] = None
+
+        if dialog.exec():
+            fileNames = dialog.selectedFiles()
+        
+        if fileNames:
+            self.currentFile = open(fileNames[0], 'rb')
+            self.currentSize = getsize(fileNames[0]);
+            self.currentName = Path(fileNames[0]).name
+            self.setUploadState(UploadState.FILE_UPLOADED)
+        else:
+            self.setUploadState(UploadState.UPLOAD_FAIL)
+        pass
+
+    @Slot(int)
+    def changeTab(self, id):
+        if id == 0:
+            print("Uploading")
+        elif id == 1 :
+            print("Downloading")

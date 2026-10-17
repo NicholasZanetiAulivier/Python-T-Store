@@ -1,4 +1,4 @@
-from pathlib import Path,WindowsPath
+from pathlib import Path
 import sqlite3
 
 class DatabaseManager:
@@ -37,7 +37,6 @@ class DatabaseManager:
 
 
     def createTable(self):
-
         self.runQuery(
             """
             CREATE TABLE IF NOT EXISTS files (
