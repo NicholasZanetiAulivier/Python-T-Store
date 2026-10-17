@@ -1,11 +1,15 @@
 from io import FileIO
 from os.path import getsize
 from pathlib import Path
+from enum import Enum
+from time import sleep
 
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog
 from PySide6.QtCore import Slot
+from pathvalidate import is_valid_filename
 from managers.DatabaseManager import DatabaseManager
-from enum import Enum
+from managers.TelegramManager import TelegramManager
+
 
 class UploadState(Enum):
     NO_FILE = 1
@@ -17,6 +21,7 @@ class UploadState(Enum):
 
 class FilesManager:
     db: DatabaseManager = DatabaseManager()
+    tg: TelegramManager = TelegramManager()
 
 
     def __init__(self, files: QWidget, sendSignal):
@@ -47,8 +52,16 @@ class FilesManager:
         self.tabs.currentChanged.connect(self.changeTab)
 
         self.uploadButton.clicked.connect(self.openFileDialog)
+        self.confirmButton.clicked.connect(self.handleConfirm)
 
         self.setUploadState(UploadState.NO_FILE)
+
+        attempts = 100
+        while not FilesManager.tg.getAuth():
+            if attempts <= 0:
+                raise RuntimeError("Local Telegram Bot API was unable to be accessed")
+            sleep(0.5)
+            attempts -= 1
 
     def __del__(self):
         if(self.currentFile):
@@ -78,7 +91,7 @@ class FilesManager:
                 self.fileName.setEnabled(True)
                 self.status.setText("File has been picked")
                 self.fileSize.setText(f"{self.currentSize} bytes")
-                self.confirmButton.setEnabled(False)
+                self.confirmButton.setEnabled(True)
             case UploadState.INVALID_FILE_NAME:
                 self.fileName.setEnabled(True)
                 self.status.setText("File name is invalid")
@@ -113,9 +126,48 @@ class FilesManager:
             self.setUploadState(UploadState.UPLOAD_FAIL)
         pass
 
+    def handleConfirm(self):
+        self.currentName = self.fileName.text()
+        self.confirmButton.setEnabled(False)
+
+        cases = [
+            self.checkForDuplicateFileName(),
+            self.checkForInvalidFileName(),
+        ]
+
+        if not all(cases):
+            return
+        
+        self.confirmButton.setEnabled(True)
+        
+
+
+    def checkForInvalidFileName(self) -> bool:
+        if not is_valid_filename(self.currentName):
+            self.setUploadState(UploadState.INVALID_FILE_NAME)
+            return False
+        return True
+
+    def checkForDuplicateFileName(self) -> bool:
+        db = FilesManager.db
+        res = db.runQuery(
+            """
+            SELECT file_name FROM files WHERE file_name = ?
+            """,
+            [self.currentName]
+        )
+        if len(res) > 0:
+            self.setUploadState(UploadState.DUPLICATE_FILE_NAME)
+            return False
+        return True
+
+    def uploadFile(self):
+        pass
+
+
     @Slot(int)
     def changeTab(self, id):
         if id == 0:
-            print("Uploading")
+            self.setUploadState(UploadState.NO_FILE)
         elif id == 1 :
-            print("Downloading")
+            pass

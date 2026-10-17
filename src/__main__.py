@@ -15,8 +15,11 @@ if __name__ == "__main__":
     telegramProcess = BotAPIProcess()
     telegramProcess.startBot()
 
-    #Start App
-    app = Application()
-    returnCode = app.runApp()
-    telegramProcess.stopBot()
-    sys.exit(returnCode)
+    try:
+        #Start App
+        app = Application()
+        returnCode = app.runApp()
+        telegramProcess.stopBot()
+        sys.exit(returnCode)
+    except:
+        telegramProcess.stopBot()
