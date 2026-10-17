@@ -62,6 +62,8 @@ class FilesManager:
                 raise RuntimeError("Local Telegram Bot API was unable to be accessed")
             sleep(0.5)
             attempts -= 1
+        if not FilesManager.tg.sendMessage("Bot initialized"):
+            raise RuntimeError("Unable to send a basic message")
 
     def __del__(self):
         if(self.currentFile):

@@ -21,5 +21,5 @@ if __name__ == "__main__":
         returnCode = app.runApp()
         telegramProcess.stopBot()
         sys.exit(returnCode)
-    except:
+    finally:
         telegramProcess.stopBot()
