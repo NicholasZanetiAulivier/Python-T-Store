@@ -1,7 +1,10 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QPlainTextEdit, QTableWidget
+from managers.DatabaseManager import DatabaseManager
 
 class FilesManager:
     def __init__(self, files: QWidget, sendSignal):
+        self.db: DatabaseManager = DatabaseManager()
+
         self.sendSignal = sendSignal
         
         self.page: QWidget = files
