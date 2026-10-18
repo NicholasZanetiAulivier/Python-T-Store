@@ -3,9 +3,11 @@ from os.path import getsize
 from pathlib import Path
 from enum import Enum
 from time import sleep
+from datetime import datetime
+from multiprocessing import Process
 
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Slot, QThread
 from pathvalidate import is_valid_filename
 from managers.DatabaseManager import DatabaseManager
 from managers.TelegramManager import TelegramManager
@@ -18,8 +20,11 @@ class UploadState(Enum):
     INVALID_FILE_NAME = 4 
     UPLOAD_SUCCESS = 5
     UPLOAD_FAIL = 6
+    UPLOADING = 7
 
 class FilesManager:
+    FILE_PARTS_MAX_SIZE= 209715200
+
     db: DatabaseManager = DatabaseManager()
     tg: TelegramManager = TelegramManager()
 
@@ -30,6 +35,7 @@ class FilesManager:
         self.currentSize: int = 0
         self.currentName: str = ""
         self.currentFile: FileIO =None
+        self.currentThread: Process = None
         
         self.page: QWidget = files
 
@@ -70,7 +76,7 @@ class FilesManager:
             self.currentFile.close()
 
     def show(self):
-            self.page.show()
+        self.page.show()
     
     def close(self):
         self.page.setVisible(False)
@@ -109,6 +115,12 @@ class FilesManager:
                 self.status.setText("File failed to upload. Try again")
                 self.fileSize.setText("-")
                 self.confirmButton.setEnabled(False)
+            case UploadState.UPLOADING:
+                self.fileName.setEnabled(False)
+                self.status.setText("File is being uploaded, please wait")
+                self.fileSize.setText(f"{self.currentSize} bytes")
+                self.confirmButton.setEnabled(False)
+
 
     def openFileDialog(self):
         dialog = QFileDialog(self.page)
@@ -128,21 +140,27 @@ class FilesManager:
             self.setUploadState(UploadState.UPLOAD_FAIL)
         pass
 
+
+    
     def handleConfirm(self):
-        self.currentName = self.fileName.text()
-        self.confirmButton.setEnabled(False)
+        try:
+            self.currentName = self.fileName.text()
+            self.setUploadState(UploadState.UPLOADING)
 
-        cases = [
-            self.checkForDuplicateFileName(),
-            self.checkForInvalidFileName(),
-        ]
+            cases = [
+                self.checkForDuplicateFileName(),
+                self.checkForInvalidFileName(),
+            ]
 
-        if not all(cases):
-            return
-        
-        self.confirmButton.setEnabled(True)
-        
+            if not all(cases):
+                return
 
+            res = self.uploadFile()
+            
+            self.setUploadState(UploadState.UPLOAD_SUCCESS)
+        except:
+            self.setUploadState(UploadState.UPLOAD_FAIL)
+            FilesManager.db.rollback()
 
     def checkForInvalidFileName(self) -> bool:
         if not is_valid_filename(self.currentName):
@@ -162,14 +180,44 @@ class FilesManager:
             self.setUploadState(UploadState.DUPLICATE_FILE_NAME)
             return False
         return True
+    
 
     def uploadFile(self):
-        pass
+        newFileId = FilesManager.db.runQuery(
+            """
+            INSERT INTO files(file_name, created_at, size_bytes) VALUES (?,?,?) RETURNING rowid
+            """,
+            [self.currentName, datetime.now(), self.currentSize]
+        )[0][0]
+        
+        curr = self.currentSize
+        order = 1
+        while curr > 0:
+            part = self.currentFile.read(self.FILE_PARTS_MAX_SIZE)
+            curr -= self.FILE_PARTS_MAX_SIZE
+            res = FilesManager.tg.sendDocument(part)
+            if res == None:
+                raise RuntimeError("Unable to upload file")
 
+            doc = res["result"]["document"]
+
+            FilesManager.db.runQuery(
+                """
+                INSERT INTO file_parts(file_id, part_id, part_unique_id, size_bytes, part_order) 
+                VALUES(?,?,?,?,?)
+                """,
+                [newFileId, doc["file_id"], doc["file_unique_id"], doc["file_size"], order]
+            )
+            order += 1
+
+        print(
+            FilesManager.db.runQuery("SELECT * FROM files join file_parts ON files.rowid=file_parts.file_id")
+        )
+        FilesManager.db.commit()
 
     @Slot(int)
     def changeTab(self, id):
         if id == 0:
-            self.setUploadState(UploadState.NO_FILE)
+            pass
         elif id == 1 :
             pass

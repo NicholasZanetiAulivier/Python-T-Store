@@ -12,6 +12,7 @@ class DatabaseManager:
         pass
 
     def __del__(self):
+        self.connection.rollback()
         self.connection.close()
 
     def createDB(self):
@@ -32,17 +33,40 @@ class DatabaseManager:
                 cursor.execute(query, args)
         except:
             raise RuntimeError(f"Failed to run query {query}")
-        self.connection.commit()
         return cursor.fetchall()
 
 
     def createTable(self):
+        self.runQuery("PRAGMA foreign_keys = ON")
+
         self.runQuery(
             """
             CREATE TABLE IF NOT EXISTS files (
+                rowid INTEGER NOT NULL PRIMARY KEY,
                 file_name TEXT NOT NULL,
                 created_at DATETIME NOT NULL,
                 size_bytes UNSIGNED BIG INT NOT NULL
             )
             """
         )
+
+        self.runQuery(
+            """
+            CREATE TABLE IF NOT EXISTS file_parts(
+                file_id INTEGER NOT NULL,
+                part_id TEXT NOT NULL,
+                part_unique_id TEXT NOT NULL,
+                size_bytes UNSIGNED BIG INT NOT NULL,
+                part_order INTEGER NOT NULL,
+                FOREIGN KEY (file_id) REFERENCES files(rowid),
+                UNIQUE (file_id, part_order)
+            )
+            """
+        )
+        self.commit()
+
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()

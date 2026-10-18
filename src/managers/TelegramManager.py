@@ -25,6 +25,14 @@ class TelegramManager:
         if(res.status_code == 200):
             return loads(res.text)
 
+    def sendDocument(self, file):
+        body = {
+            "chat_id" : self.chatId
+        }
+        res = post(f"{self.baseUrl}/sendDocument",files={'document': file}, data=body)
+        if(res.status_code == 200):
+            return loads(res.text)
+
     def sendMessage(self, message):
         body = {
             "chat_id": self.chatId,
