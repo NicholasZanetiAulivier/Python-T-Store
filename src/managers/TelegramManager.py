@@ -1,4 +1,4 @@
-from os import getenv
+from os import getenv, listdir
 
 from requests import get, post
 from json import loads
@@ -11,6 +11,7 @@ class TelegramManager:
         self.baseUrl = f"http://localhost:8081/bot{self.botToken}"
         self.username = f"@{getenv("USERNAME")}"
         self.chatId = int(getenv("CHAT_ID"))
+        self.documentsDir = None
 
     def getAuth(self):
         try:
@@ -42,3 +43,8 @@ class TelegramManager:
         if res.status_code == 200:
             return loads(res.text)
         raise RuntimeError(res.text)
+
+    def getDocument(self, file_id):
+        filePath = loads(get(f"{self.baseUrl}/getFile?file_id={file_id}").text)["result"]["file_path"]
+        return filePath
+        

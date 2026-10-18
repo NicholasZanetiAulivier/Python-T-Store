@@ -5,6 +5,7 @@ from enum import Enum
 from time import sleep
 from datetime import datetime
 from functools import partial
+from os import getenv, path, remove
 
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog, QTableWidgetItem
 from PySide6.QtCore import Slot, Qt
@@ -23,7 +24,7 @@ class UploadState(Enum):
     UPLOADING = 7
 
 class FilesManager:
-    FILE_PARTS_MAX_SIZE= 209715200
+    FILE_PARTS_MAX_SIZE= 1992294400
 
     db: DatabaseManager = DatabaseManager()
     tg: TelegramManager = TelegramManager()
@@ -31,6 +32,8 @@ class FilesManager:
 
     def __init__(self, files: QWidget, sendSignal):
         self.sendSignal = sendSignal
+
+        self.downloadLocation: str = getenv("DOWNLOAD_DIRECTORY")
 
         self.currentSize: int = 0
         self.currentName: str = ""
@@ -226,21 +229,22 @@ class FilesManager:
 
         self.table.setRowCount(len(res))
         if(len(res) <= 0):
+            self.table.setColumnCount(5)
+            self.table.verticalHeader().setVisible(False)
+            self.table.setHorizontalHeaderLabels(["Uploaded At", "File Name", "Byte Size", "Download", "Delete"])
             self.table.resizeColumnsToContents()
             self.table.resizeRowsToContents()
             self.table.setAlternatingRowColors(True)
             return
         
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.table.setColumnCount(len(res[0])+1)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setHorizontalHeaderLabels(["Uploaded At", "File Name", "Byte Size", "Download", "Delete"])
         for i in range(len(res)):
             for j in range(len(res[0])-1):
                 self.table.setItem(i, j, QTableWidgetItem(str(res[i][j])))
             fileId = res[i][3]
             downloadButton = QPushButton(self.table)
             downloadButton.setText("Download")
+            downloadButton.clicked.connect(partial(self.handleDownload, fileId))
             self.table.setCellWidget(i,3,downloadButton)
 
             deleteButton = QPushButton(self.table)
@@ -270,6 +274,35 @@ class FilesManager:
         FilesManager.db.commit()
         self.loadFileList(self.search.text())
 
+    def handleDownload(self, id):
+
+        parts = FilesManager.db.runQuery(
+            """
+            SELECT part_id, part_order FROM file_parts WHERE file_id= ? ORDER BY part_order ASC 
+            """,
+            [id]
+        )
+        fileName = FilesManager.db.runQuery(
+            """
+            SELECT file_name FROM files WHERE rowid = ?
+            """,
+            [id]
+        )[0][0]
+        downloadPath = f"{self.downloadLocation}/{fileName}"
+        num = 1
+        while path.exists(downloadPath):
+            downloadPath = f"{self.downloadLocation}/{num}{fileName}"
+            num += 1
+
+        for row in parts:
+            pathId = row[0]
+            partDocument = FilesManager.tg.getDocument(pathId)
+            with open(downloadPath, "ab") as downloadedFile:
+                with open(partDocument, "rb") as partFile:
+                    downloadedFile.write(partFile.read())
+                remove(partDocument)
+        print("Download done")
+        
     @Slot(int)
     def changeTab(self, id):
         if id == 0:

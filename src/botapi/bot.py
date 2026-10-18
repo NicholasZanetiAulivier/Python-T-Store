@@ -15,7 +15,8 @@ class BotAPIProcess:
                 "telegram-bot-api/bin/telegram-bot-api.exe", 
                 f"--api-id={getenv("TELEGRAM_API_ID")}",
                 f"--api-hash={getenv("TELEGRAM_API_HASH")}",
-                f"--dir=./telegram-bot-api/data"
+                f"--dir=./telegram-bot-api/data",
+                "--local"
                 ],
             stdout=PIPE,
             text=True

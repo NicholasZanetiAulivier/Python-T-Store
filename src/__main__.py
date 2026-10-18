@@ -23,5 +23,6 @@ def main():
             sys.exit(returnCode)
         finally:
             telegramProcess.stopBot()
+            pass
 
 main()
