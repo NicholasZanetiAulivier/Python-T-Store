@@ -153,7 +153,7 @@
          <item row="4" column="0">
           <widget class="QLabel" name="confirmLabel">
            <property name="text">
-            <string>TextLabel</string>
+            <string>Confirm</string>
            </property>
           </widget>
          </item>
@@ -249,7 +249,43 @@
         </layout>
        </item>
        <item>
-        <widget class="QTableWidget" name="table"/>
+        <widget class="QTableWidget" name="table">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>758</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="autoScroll">
+          <bool>false</bool>
+         </property>
+         <property name="editTriggers">
+          <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+         </property>
+         <property name="textElideMode">
+          <enum>Qt::TextElideMode::ElideLeft</enum>
+         </property>
+         <property name="rowCount">
+          <number>0</number>
+         </property>
+         <property name="columnCount">
+          <number>5</number>
+         </property>
+         <column/>
+         <column/>
+         <column/>
+         <column/>
+         <column/>
+        </widget>
        </item>
       </layout>
      </widget>

@@ -4,10 +4,9 @@ from pathlib import Path
 from enum import Enum
 from time import sleep
 from datetime import datetime
-from multiprocessing import Process
 
-from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog
-from PySide6.QtCore import Slot, QThread
+from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog, QTableWidgetItem
+from PySide6.QtCore import Slot, Qt
 from pathvalidate import is_valid_filename
 from managers.DatabaseManager import DatabaseManager
 from managers.TelegramManager import TelegramManager
@@ -35,7 +34,6 @@ class FilesManager:
         self.currentSize: int = 0
         self.currentName: str = ""
         self.currentFile: FileIO =None
-        self.currentThread: Process = None
         
         self.page: QWidget = files
 
@@ -68,8 +66,7 @@ class FilesManager:
                 raise RuntimeError("Local Telegram Bot API was unable to be accessed")
             sleep(0.5)
             attempts -= 1
-        if not FilesManager.tg.sendMessage("Bot initialized"):
-            raise RuntimeError("Unable to send a basic message")
+        self.loadFileList()
 
     def __del__(self):
         if(self.currentFile):
@@ -139,8 +136,6 @@ class FilesManager:
         else:
             self.setUploadState(UploadState.UPLOAD_FAIL)
         pass
-
-
     
     def handleConfirm(self):
         try:
@@ -214,6 +209,36 @@ class FilesManager:
             FilesManager.db.runQuery("SELECT * FROM files join file_parts ON files.rowid=file_parts.file_id")
         )
         FilesManager.db.commit()
+        self.loadFileList()
+
+    def loadFileList(self):
+        res = FilesManager.db.runQuery(
+            """
+            SELECT created_at, file_name, size_bytes FROM files
+            """
+        )
+
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.table.setRowCount(len(res))
+        self.table.setColumnCount(len(res[0])+2)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setHorizontalHeaderLabels(["Uploaded At", "File Name", "Byte Size", "Download", "Delete"])
+        for i in range(len(res)):
+            for j in range(len(res[0])):
+                self.table.setItem(i, j, QTableWidgetItem(str(res[i][j])))
+            downloadButton = QPushButton(self.table)
+            downloadButton.setText("Download")
+            self.table.setCellWidget(i,3,downloadButton)
+
+            deleteButton = QPushButton(self.table)
+            deleteButton.setText("Delete")
+            self.table.setCellWidget(i,4,deleteButton)
+        pass
+        self.table.resizeColumnsToContents()
+        self.table.resizeRowsToContents()
+        self.table.setAlternatingRowColors(True)
+
+    # def delete
 
     @Slot(int)
     def changeTab(self, id):
