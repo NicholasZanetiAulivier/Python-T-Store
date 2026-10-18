@@ -4,6 +4,7 @@ from pathlib import Path
 from enum import Enum
 from time import sleep
 from datetime import datetime
+from functools import partial
 
 from PySide6.QtWidgets import QWidget, QPushButton, QLabel, QLineEdit, QTableWidget, QTabWidget, QFileDialog, QTableWidgetItem
 from PySide6.QtCore import Slot, Qt
@@ -57,6 +58,7 @@ class FilesManager:
 
         self.uploadButton.clicked.connect(self.openFileDialog)
         self.confirmButton.clicked.connect(self.handleConfirm)
+        self.searchButton.clicked.connect(lambda: self.loadFileList(self.search.text()))
 
         self.setUploadState(UploadState.NO_FILE)
 
@@ -176,7 +178,6 @@ class FilesManager:
             return False
         return True
     
-
     def uploadFile(self):
         newFileId = FilesManager.db.runQuery(
             """
@@ -204,41 +205,70 @@ class FilesManager:
                 [newFileId, doc["file_id"], doc["file_unique_id"], doc["file_size"], order]
             )
             order += 1
-
-        print(
-            FilesManager.db.runQuery("SELECT * FROM files join file_parts ON files.rowid=file_parts.file_id")
-        )
         FilesManager.db.commit()
-        self.loadFileList()
+        self.loadFileList(self.search.text())
 
-    def loadFileList(self):
-        res = FilesManager.db.runQuery(
-            """
-            SELECT created_at, file_name, size_bytes FROM files
-            """
-        )
+    def loadFileList(self, search = None):
+        res = None
+        if search == None or len(str(search)) <= 0:
+            res = FilesManager.db.runQuery(
+                """
+                SELECT created_at, file_name, size_bytes, rowid FROM files
+                """
+            )
+        else:
+            res = FilesManager.db.runQuery(
+                """
+                SELECT created_at, file_name, size_bytes, rowid FROM files WHERE file_name REGEXP ?
+                """,
+                [search]
+            )
 
-        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.table.setRowCount(len(res))
-        self.table.setColumnCount(len(res[0])+2)
+        if(len(res) <= 0):
+            self.table.resizeColumnsToContents()
+            self.table.resizeRowsToContents()
+            self.table.setAlternatingRowColors(True)
+            return
+        
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.table.setColumnCount(len(res[0])+1)
         self.table.verticalHeader().setVisible(False)
         self.table.setHorizontalHeaderLabels(["Uploaded At", "File Name", "Byte Size", "Download", "Delete"])
         for i in range(len(res)):
-            for j in range(len(res[0])):
+            for j in range(len(res[0])-1):
                 self.table.setItem(i, j, QTableWidgetItem(str(res[i][j])))
+            fileId = res[i][3]
             downloadButton = QPushButton(self.table)
             downloadButton.setText("Download")
             self.table.setCellWidget(i,3,downloadButton)
 
             deleteButton = QPushButton(self.table)
             deleteButton.setText("Delete")
+            deleteButton.clicked.connect(partial(self.handleDelete, fileId))
             self.table.setCellWidget(i,4,deleteButton)
         pass
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
         self.table.setAlternatingRowColors(True)
 
-    # def delete
+    def handleDelete(self, id):
+        FilesManager.db.runQuery(
+            """
+            DELETE FROM file_parts WHERE file_id = ?
+            """,
+            [id]
+        )
+
+        FilesManager.db.runQuery(
+            """
+            DELETE FROM files WHERE rowid = ?
+            """,
+            [id]
+        )
+
+        FilesManager.db.commit()
+        self.loadFileList(self.search.text())
 
     @Slot(int)
     def changeTab(self, id):

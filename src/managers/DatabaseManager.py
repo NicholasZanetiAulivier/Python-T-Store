@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import re
 
 class DatabaseManager:
 
@@ -63,6 +64,13 @@ class DatabaseManager:
             )
             """
         )
+
+        # Define a custom regex function
+        def regexp(pattern, item):
+            return re.search(pattern, item) is not None
+
+        # Register the regexp function with SQLite
+        self.connection.create_function("REGEXP", 2, regexp)
         self.commit()
 
     def commit(self):
