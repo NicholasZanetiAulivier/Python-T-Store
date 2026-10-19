@@ -9,7 +9,6 @@ class DatabaseManager:
     def __init__(self):
         self.createDB()
         self.createTable()
-
         pass
 
     def __del__(self):

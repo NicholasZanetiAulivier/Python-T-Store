@@ -23,6 +23,10 @@ class Application(QApplication):
         files = Application.loadUiFile(Application.FILE_MANAGEMENT_SRC)
         self.filesManager = FilesManager(files, self.signal)
 
+    def __del__(self):
+        del Application.loginManager;
+        del Application.filesManager
+
     def loadUiFile(source: str, width: int = 800, height: int = 600):
         file = QFile(source)
         if not file.open(QIODevice.ReadOnly):

@@ -19,10 +19,12 @@ def main():
             #Start App
             app = Application()
             returnCode = app.runApp()
+            app.filesManager.__del__()
             telegramProcess.stopBot()
             sys.exit(returnCode)
         finally:
             telegramProcess.stopBot()
+            del telegramProcess
             pass
 
 main()
